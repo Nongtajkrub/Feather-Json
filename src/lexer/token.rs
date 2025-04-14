@@ -1,3 +1,5 @@
+use super::lexer::lex;
+
 #[derive(Clone, Copy, PartialEq, Eq)]
 #[repr(u8)]
 pub enum TokenType {
@@ -16,19 +18,19 @@ pub enum TokenType {
 }
 
 pub struct Token {
-    lexeme: String,
+    lexeme: Option<String>,
     token_type: TokenType,
 }
 
 impl Token {
-    pub fn new(lexeme: &str, token_type: TokenType) -> Self {
+    pub fn new(lexeme: Option<&str>, token_type: TokenType) -> Self {
         Token {
-            lexeme: String::from(lexeme),
+            lexeme: lexeme.map(|lexeme| lexeme.to_string()),
             token_type
         }
     }
 
-    pub fn lexeme(&self) -> &str {
+    pub fn lexeme(&self) -> &Option<String> {
         &self.lexeme
     }
     
