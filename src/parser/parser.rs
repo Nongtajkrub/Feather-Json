@@ -1,5 +1,5 @@
 use crate::parser::{token::{Token, TokenType}, lexer::{lex, lex_from_file}};
-use std::{any::Any, collections::HashMap, io};
+use std::{collections::HashMap, io};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum Either<F, S> {
@@ -7,63 +7,37 @@ enum Either<F, S> {
     Second(S),
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-enum JsonDatatype {
-    String,
-    Int,
-    Float,
-    Bool,
+enum JsonValue {
+    String(String),
+    Int(i32),
+    Float(f32),
+    Bool(bool),
 }
 
-trait AllowJsonDatatype {}
-impl AllowJsonDatatype for i32  {}
-impl AllowJsonDatatype for f32  {}
-impl AllowJsonDatatype for bool {}
-impl AllowJsonDatatype for String {}
-
-struct Val {
-    val: Box<dyn Any>,
-    datatype: JsonDatatype,
+struct KeyValPair {
+    pair: HashMap<String, Either<JsonValue, KeyValPair>>,
 }
 
-impl Val {
-    pub fn new<T>(val: T, datatype: JsonDatatype) -> Self
-    where
-        T: 'static + AllowJsonDatatype,
-    {
-        Val {
-            val: Box::new(val),
-            datatype,
-        }
-    }
-}
-
-struct KeyValPair<'a> {
-    pair: HashMap<&'a str, Either<Val, KeyValPair<'a>>>,
-}
-
-impl<'a> KeyValPair<'a> {
+impl KeyValPair {
     pub fn new() -> Self {
         KeyValPair {
             pair: HashMap::new(),
         }
     }
 
-    pub fn add_normal<T>(&mut self, key: &'a str, val: T, datatype: JsonDatatype) 
-    where
-        T: 'static + AllowJsonDatatype,
-    {
-        self.pair.insert(key, Either::First(Val::new(val, datatype)));
-    }    
+    #[inline]
+    pub fn insert_normal(&mut self, key: &str, val: JsonValue) {
+        self.pair.insert(key.to_string(), Either::First(val));
+    }
 }
 
-pub struct Parser<'a> {
+pub struct Parser {
     tokens: Vec<Token>,
-    result: KeyValPair<'a>,
+    result: KeyValPair,
 }
 
-impl<'a> Parser<'a> {
-    fn new(tokens: Vec<Token>, result: KeyValPair<'a>) -> Self {
+impl Parser {
+    fn new(tokens: Vec<Token>, result: KeyValPair) -> Self {
         let mut parser = Parser {
             tokens,
             result,
@@ -72,14 +46,46 @@ impl<'a> Parser<'a> {
         parser
     }
 
+    #[inline]
     pub fn from_file(path: &str) -> io::Result<Self> {
         Ok(Self::new(lex_from_file(path)?, KeyValPair::new()))
     }
 
+    #[inline]
     pub fn from_string(data: &str) -> Self {
         Self::new(lex(data), KeyValPair::new())
     }
 
+    fn string_to_val(val: &str) -> JsonValue {
+        if val == "true" {
+            JsonValue::Bool(true)
+        } else if val == "false" {
+            JsonValue::Bool(false)
+        } else if let Ok(parsed) = val.parse::<i32>() {
+            JsonValue::Int(parsed)
+        } else if let Ok(parsed) = val.parse::<f32>() {
+            JsonValue::Float(parsed)
+        } else {
+            JsonValue::String(val.to_string())
+        }
+    }
+
+    fn handle_key(&mut self, i: usize) {
+        if self.tokens[i + 2].token_type() == TokenType::Value {
+            self.result.insert_normal(
+                self.tokens[i].lexeme().as_ref().unwrap(),
+                Self::string_to_val(self.tokens[i + 2].lexeme().as_ref().unwrap()));
+        } else if self.tokens[i + 2].token_type() == TokenType::OpeningBrace {
+
+        }
+    }
+
     fn parse(&mut self) {
+        for i in 0..self.tokens.len() {
+            match self.tokens[i].token_type() {
+                TokenType::Key => self.handle_key(i),
+                _ => todo!(),
+            }
+        }
     }
 }
