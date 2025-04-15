@@ -1,4 +1,4 @@
-use crate::lexer::token::{Token, TokenType};
+use crate::parser::token::{Token, TokenType};
 
 fn handle_closing_brace(buf: &mut Vec<Token>, lexeme: &mut String) {
     buf.push(Token::new(lexeme, TokenType::Value));
