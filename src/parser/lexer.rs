@@ -31,6 +31,7 @@ pub fn lex(data: &str) -> Vec<Token> {
             '}' => handle_closing_brace(&mut result, &mut lexeme),
             ':' => handle_assigner(&mut result, &mut lexeme),
             ',' => handle_separator(&mut result, &mut lexeme),
+            '\n' | '\r' | ' ' => (),
             _ => lexeme.push(ch),
         }
     }
