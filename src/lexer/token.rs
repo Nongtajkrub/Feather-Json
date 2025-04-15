@@ -1,4 +1,4 @@
-#[derive(Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(u8)]
 pub enum TokenType {
     /// `{`
@@ -15,6 +15,7 @@ pub enum TokenType {
     Separator,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Token {
     lexeme: Option<String>,
     token_type: TokenType,
