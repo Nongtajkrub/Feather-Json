@@ -1,5 +1,12 @@
 use crate::lexer::token::{Token, TokenType};
 
+fn handle_closing_brace(buf: &mut Vec<Token>, lexeme: &mut String) {
+    buf.push(Token::new(lexeme, TokenType::Value));
+    buf.push(Token::no_lexeme(TokenType::ClosingBrace));
+
+    lexeme.clear();
+}
+
 fn handle_assigner(buf: &mut Vec<Token>, lexeme: &mut String) {
     buf.push(Token::new(lexeme, TokenType::Key));
     buf.push(Token::no_lexeme(TokenType::Assigner));
@@ -21,7 +28,7 @@ pub fn lex(data: &str) -> Vec<Token> {
     for ch in data.chars() {
         match ch {
             '{' => result.push(Token::no_lexeme(TokenType::OpeningBrace)),
-            '}' => result.push(Token::no_lexeme(TokenType::ClosingBrace)),
+            '}' => handle_closing_brace(&mut result, &mut lexeme),
             ':' => handle_assigner(&mut result, &mut lexeme),
             ',' => handle_separator(&mut result, &mut lexeme),
             _ => lexeme.push(ch),
