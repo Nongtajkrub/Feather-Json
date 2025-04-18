@@ -44,10 +44,8 @@ impl Json {
     fn update_nested_level(buf: &mut usize, current_token: &Token) {
         if current_token.token_type() == TokenType::OpeningBrace {
             *buf += 1;
-            println!("nested level inc: {}", *buf);
         } else if current_token.token_type() == TokenType::ClosingBrace {
             *buf -= 1;
-            println!("nested level dec: {}", *buf);
         }
     }
 
