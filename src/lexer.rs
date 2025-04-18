@@ -1,4 +1,4 @@
-use crate::parser::token::{Token, TokenType};
+use crate::token::{Token, TokenType};
 use std::{fs, io};
 
 fn handle_closing_brace(buf: &mut Vec<Token>, lexeme: &mut String) {

@@ -1,4 +1,4 @@
-use crate::parser::{lexer::{lex, lex_from_file}, token::{Token, TokenType}};
+use crate::{lexer::{lex, lex_from_file}, token::{Token, TokenType}};
 use std::io;
 
 #[derive(Debug, Clone, PartialEq)]
