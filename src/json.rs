@@ -76,4 +76,20 @@ impl Json {
 
         JsonValue::Unknown
     }
+
+    fn estimate_json_size(&self) -> usize {
+        let size = self.tokens.iter().map(|token| {
+            match token.token_type() {
+                TokenType::OpeningBrace
+                | TokenType::ClosingBrace 
+                | TokenType::Assigner 
+                | TokenType::Separator => 1,
+
+                TokenType::Key | TokenType::Value => 
+                    token.lexeme().as_ref().unwrap().len(),
+            }
+        }).sum::<usize>();
+
+        size + (size / 2)
+    }
 }
