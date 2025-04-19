@@ -50,24 +50,26 @@ impl Json {
     }
 
     pub fn get<'a>(&self, keys: &[&'a str]) -> JsonValue {
-        let mut key_found = 0usize;
-        let mut nested_level = 0usize;
+        let mut key_found = 0;
+        let mut nested_level = 0;
 
         for (i, token) in self.tokens.iter().enumerate() {
-            // Ignore the first and last token which is '{' and '}'.
+            // Skip first and last token (usually `{` and `}`)
             if i != 0 && i != self.tokens.len() - 1  {
                 Self::update_nested_level(&mut nested_level, token);
             }
 
-            if token.token_type() == TokenType::Key
-                && nested_level == key_found
-                && token.lexeme().as_ref().unwrap() == keys[key_found] 
-            {
-                key_found += 1;
+            if token.token_type() == TokenType::Key && nested_level == key_found {
+                let key_lexeme = token.lexeme().as_ref().unwrap();
 
-                if key_found == keys.len() {
-                    return Self::lexeme_to_val(
-                        self.tokens[i + 2].lexeme().as_ref().unwrap())
+                // Ignore the quotes in key lexeme (\"key_lexeme\") -> (key_lexeme).
+                if &key_lexeme[1..key_lexeme.len() - 1] == keys[key_found] {
+                    key_found += 1;
+
+                    if key_found == keys.len() {
+                        return Self::lexeme_to_val(
+                            self.tokens[i + 2].lexeme().as_ref().unwrap())
+                    }
                 }
             } 
         }
