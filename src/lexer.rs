@@ -32,7 +32,7 @@ pub fn lex(data: &str) -> Vec<Token> {
             '}' => handle_closing_brace(&mut result, &mut lexeme),
             ':' => handle_assigner(&mut result, &mut lexeme),
             ',' => handle_separator(&mut result, &mut lexeme),
-            '\n' | '\r' | '\t' | ' ' | '\"' => (),
+            '\n' | '\r' | '\t' | ' ' => (),
             _ => lexeme.push(ch),
         }
     }
