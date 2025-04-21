@@ -1,5 +1,5 @@
 use crate::{lexer::{lex, lex_from_file}, token::{Token, TokenType}};
-use std::io;
+use std::{io, fs};
 
 #[derive(Debug, Clone, PartialEq)]
 #[repr(u8)]
@@ -91,5 +91,35 @@ impl Json {
         }).sum::<usize>();
 
         size + (size / 2)
+    }
+
+    pub fn to_string(&self) -> String {
+        let mut buffer = String::with_capacity(self.estimate_json_size());
+
+        for token in self.tokens.iter() {
+            match token.token_type() {
+                TokenType::OpeningBrace => buffer.push('{'),
+                TokenType::ClosingBrace => buffer.push('}'),
+                TokenType::Key => buffer.push_str(token.lexeme().as_ref().unwrap()),
+                TokenType::Value => buffer.push_str(token.lexeme().as_ref().unwrap()),
+                TokenType::Assigner => buffer.push(':'),
+                TokenType::Separator => buffer.push(','),
+            }
+        }
+
+        buffer
+    }
+
+    pub fn to_string_format(&self) -> String {
+        todo!();
+    }
+
+    pub fn write(&self, path: &str) -> io::Result<()> {
+        fs::write(path, self.to_string())?;
+        Ok(())
+    }
+
+    pub fn write_format(&self, path: &str) -> io::Result<()> {
+        todo!();
     }
 }
