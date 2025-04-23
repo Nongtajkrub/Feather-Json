@@ -2,7 +2,9 @@ use crate::token::{Token, TokenType};
 use std::{fs, io};
 
 fn handle_closing_brace(buf: &mut Vec<Token>, lexeme: &mut String) {
-    buf.push(Token::new(lexeme, TokenType::Value));
+    if lexeme.len() > 0 {
+        buf.push(Token::new(lexeme, TokenType::Value));
+    }
     buf.push(Token::no_lexeme(TokenType::ClosingBrace));
 
     lexeme.clear();
