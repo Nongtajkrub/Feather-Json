@@ -24,6 +24,12 @@ fn handle_separator(buf: &mut Vec<Token>, lexeme: &mut String) {
     lexeme.clear();
 }
 
+fn handle_space(lexeme: &mut String) {
+    if lexeme.len() != 0 && lexeme.chars().next().unwrap() == '\"' {
+        lexeme.push(' ');
+    }
+}
+
 pub fn lex(data: &str) -> Vec<Token> {
     let mut result: Vec<Token> = vec![];
     let mut lexeme = String::with_capacity(36);
@@ -34,10 +40,13 @@ pub fn lex(data: &str) -> Vec<Token> {
             '}' => handle_closing_brace(&mut result, &mut lexeme),
             ':' => handle_assigner(&mut result, &mut lexeme),
             ',' => handle_separator(&mut result, &mut lexeme),
-            '\n' | '\r' | '\t' | ' ' => (),
+            ' ' => handle_space(&mut lexeme), 
+            '\n' | '\r' | '\t' => (),
             _ => lexeme.push(ch),
         }
     }
+
+    //println!("{:#?}", result);
 
     result
 }
