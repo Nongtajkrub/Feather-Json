@@ -1,5 +1,5 @@
 use crate::{lexer::{lex, lex_from_file}, token::{Token, TokenType}};
-use std::{io, fs};
+use std::{fs, io};
 
 #[derive(Debug, Clone, PartialEq)]
 #[repr(u8)]
@@ -110,8 +110,48 @@ impl Json {
         buffer
     }
 
+    fn format_handle_closing_brace(buf: &mut String, nested_level: usize) {
+        buf.extend(std::iter::repeat_n('\t', nested_level));
+        buf.push_str("}\n");
+    }
+
+    fn format_handle_key(&self, buf: &mut String, i: usize, nested_level: usize) {
+        buf.extend(std::iter::repeat_n('\t', nested_level));
+        buf.push_str(self.tokens[i].lexeme().as_ref().unwrap());
+    }
+
+    fn format_handle_value(&self, buf: &mut String, i: usize) {
+        buf.push_str(self.tokens[i].lexeme().as_ref().unwrap());
+
+        if self.tokens[i + 1].token_type() != TokenType::Separator {
+            buf.push('\n');
+        }
+    }
+
     pub fn to_string_format(&self) -> String {
-        todo!();
+        let mut buffer = String::with_capacity(self.estimate_json_size());
+        let mut nested_level = 0;
+
+        for (i, token) in self.tokens.iter().enumerate() {
+            Self::update_nested_level(&mut nested_level, token);
+
+            match token.token_type() {
+                TokenType::OpeningBrace => 
+                    buffer.push_str("{\n"),
+                TokenType::ClosingBrace =>
+                    Self::format_handle_closing_brace(&mut buffer, nested_level),
+                TokenType::Key => 
+                    self.format_handle_key(&mut buffer, i, nested_level),
+                TokenType::Value => 
+                    self.format_handle_value(&mut buffer, i),
+                TokenType::Assigner => 
+                    buffer.push_str(": "),
+                TokenType::Separator =>
+                    buffer.push_str(",\n"),
+            }
+        }
+
+        buffer
     }
 
     pub fn write(&self, path: &str) -> io::Result<()> {
@@ -120,6 +160,7 @@ impl Json {
     }
 
     pub fn write_format(&self, path: &str) -> io::Result<()> {
-        todo!();
+        fs::write(path, self.to_string_format())?;
+        Ok(())
     }
 }
