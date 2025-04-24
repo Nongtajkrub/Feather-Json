@@ -1,5 +1,5 @@
-use crate::{lexer::{lex, lex_from_file}, token::{Token, TokenType}, error::{JsonError, JsonResult}};
-use std::{fs, io, path};
+use crate::{lexer::{lex, lex_from_file}, token::{Token, TokenType}};
+use std::{fs, io};
 
 #[derive(Debug, Clone, PartialEq)]
 #[repr(u8)]
@@ -27,6 +27,20 @@ impl Json {
         Json { tokens: lex(data), }
     }
 
+    fn lexeme_to_val(lexeme: &str) -> JsonValue {
+        if lexeme == "true" {
+            JsonValue::Bool(true)
+        } else if lexeme == "false" {
+            JsonValue::Bool(false)
+        } else if let Ok(as_int) = lexeme.parse::<i32>() {
+            JsonValue::Int(as_int)
+        } else if let Ok(as_float) = lexeme.parse::<f32>() {
+            JsonValue::Float(as_float)
+        } else {
+            JsonValue::String(lexeme.to_string())
+        }
+    }
+
     fn update_nested_level(buf: &mut usize, current_token: &Token) {
         if current_token.token_type() == TokenType::OpeningBrace {
             *buf += 1;
@@ -35,7 +49,7 @@ impl Json {
         }
     }
 
-    fn find_key_index<'a>(&self, keys: &[&'a str]) -> JsonResult<usize> {
+    pub fn get<'a>(&self, keys: &[&'a str]) -> JsonValue {
         let mut key_found = 0;
         let mut nested_level = 0;
 
@@ -53,41 +67,14 @@ impl Json {
                     key_found += 1;
 
                     if key_found == keys.len() {
-                        return Ok(i);
+                        return Self::lexeme_to_val(
+                            self.tokens[i + 2].lexeme().as_ref().unwrap())
                     }
                 }
             } 
         }
 
-        Err(JsonError::InvalidPath)
-    }
-
-    fn lexeme_to_val(lexeme: &str) -> JsonValue {
-        if lexeme == "true" {
-            JsonValue::Bool(true)
-        } else if lexeme == "false" {
-            JsonValue::Bool(false)
-        } else if let Ok(as_int) = lexeme.parse::<i32>() {
-            JsonValue::Int(as_int)
-        } else if let Ok(as_float) = lexeme.parse::<f32>() {
-            JsonValue::Float(as_float)
-        } else {
-            JsonValue::String(lexeme.to_string())
-        }
-    }
-
-    #[inline]
-    pub fn get<'a>(&self, keys: &[&'a str]) -> JsonResult<JsonValue> {
-        Ok(Self::lexeme_to_val(
-            self.tokens[self.find_key_index(keys)? + 2].lexeme().as_ref().unwrap()))
-    }
-
-    pub fn insert_value<'a>(keys: &[&'a str], value: JsonValue) {
-
-    }
-
-    pub fn insert_object<'a>(keys: &[&'a str]) {
-
+        JsonValue::Unknown
     }
 
     fn estimate_json_size(&self) -> usize {
