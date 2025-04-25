@@ -46,8 +46,6 @@ pub fn lex(data: &str) -> Vec<Token> {
         }
     }
 
-    //println!("{:#?}", result);
-
     result
 }
 
