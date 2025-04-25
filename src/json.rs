@@ -100,7 +100,7 @@ impl Json {
                 if value_token.token_type() == TokenType::OpeningBrace {
                     Err(JsonError::InvalidPath)
                 } else {
-                    Ok(value_token.lexeme().as_ref().unwrap().into())
+                    Ok(JsonValue::from(value_token.lexeme().as_ref().unwrap()))
                 }
             })
     }
@@ -112,6 +112,44 @@ impl Json {
             .and_then(|token| {
                 Ok(token.token_type() == TokenType::OpeningBrace)
             })
+    }
+
+    fn insert_value_into_index(
+        &mut self, i: usize, key: &str, value: JsonValue
+    ) -> JsonResult<()> {
+        let value_as_string: String = value.into();
+
+        self.tokens.splice(i..i, vec![
+            Token::new(&format!("\"{}\"", key), TokenType::Key),
+            Token::no_lexeme(TokenType::Assigner),
+            Token::new(&value_as_string, TokenType::Value),
+        ]);
+
+        // Add a separator if needed.
+        match self.tokens.get(i + 3) {
+            Some(token) if token.token_type() == TokenType::ClosingBrace => (),
+            Some(_) => self.tokens.insert(i + 3, Token::no_lexeme(TokenType::Separator)),
+            None => return Err(JsonError::InvalidJson),
+        } 
+
+        Ok(())
+    }
+
+    pub fn insert_value(
+        &mut self, keys: &[&str], key: &str, value: JsonValue
+    ) -> JsonResult<()> {
+        match self.find_key_token_index(keys) {
+            Ok(i) => {
+                if !self.is_key_value_an_object(i)? {
+                    Err(JsonError::InsertCantInsertIntoValue)
+                } else {
+                    self.insert_value_into_index(i + 3, key, value)
+                }
+            }
+            Err(ref e) if *e == JsonError::NoPathProvided =>
+                self.insert_value_into_index(1, key, value),
+            Err(e) => Err(e),
+        }
     }
 
     fn insert_object_into_index(&mut self, i: usize, key: &str) -> JsonResult<()> {
