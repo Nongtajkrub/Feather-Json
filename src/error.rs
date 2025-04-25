@@ -11,8 +11,8 @@ pub enum JsonError {
     #[error("Invalid Json")]
     InvalidJson,
 
-    #[error("Key you are attempting to insert already exsit use change instead.")]
-    InsertKeyAlreadyExsist,
+    #[error("")]
+    InsertCantInsertIntoValue,
 
     #[error("Std Input Output Error: {0}")]
     StdInputOutputError(#[from] std::io::Error),
@@ -26,7 +26,6 @@ impl PartialEq for JsonError {
             (NoPathProvided, NoPathProvided) => true,
             (InvalidPath, InvalidPath) => true,
             (InvalidJson, InvalidJson) => true,
-            (InsertKeyAlreadyExsist, InsertKeyAlreadyExsist) => true,
             (StdInputOutputError(_), StdInputOutputError(_)) => true,
 
             _ => false,
