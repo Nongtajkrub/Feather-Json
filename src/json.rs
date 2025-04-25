@@ -4,7 +4,6 @@ use std::{fs, io};
 #[derive(Debug, Clone, PartialEq)]
 #[repr(u8)]
 pub enum JsonValue {
-    Unknown,
     Int(i32),
     Float(f32),
     Bool(bool),
@@ -27,6 +26,18 @@ impl From<&String> for JsonValue {
         }
     }
 }
+
+impl Into<String> for JsonValue {
+    fn into(self) -> String {
+        match self {
+            JsonValue::Int(value) => value.to_string(),
+            JsonValue::Float(value) => value.to_string(),
+            JsonValue::Bool(value) => value.to_string(),
+            JsonValue::String(value) => value,
+            JsonValue::Array(_) => todo!(),
+        }
+    }
+} 
 
 pub struct Json {
     tokens: Vec<Token>,
