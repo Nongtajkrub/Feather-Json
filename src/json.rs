@@ -12,6 +12,22 @@ pub enum JsonValue {
     Array(Vec<JsonValue>),
 }
 
+impl From<&String> for JsonValue {
+    fn from(value: &String) -> Self {
+        if value == "true" {
+            JsonValue::Bool(true)
+        } else if value == "false" {
+            JsonValue::Bool(false)
+        } else if let Ok(as_int) = value.parse::<i32>() {
+            JsonValue::Int(as_int)
+        } else if let Ok(as_float) = value.parse::<f32>() {
+            JsonValue::Float(as_float)
+        } else {
+            JsonValue::String(value.to_string())
+        }
+    }
+}
+
 pub struct Json {
     tokens: Vec<Token>,
 }
@@ -25,20 +41,6 @@ impl Json {
     #[inline]
     pub fn from_string(data: &str) -> Json {
         Json { tokens: lex(data), }
-    }
-
-    fn lexeme_to_val(lexeme: &str) -> JsonValue {
-        if lexeme == "true" {
-            JsonValue::Bool(true)
-        } else if lexeme == "false" {
-            JsonValue::Bool(false)
-        } else if let Ok(as_int) = lexeme.parse::<i32>() {
-            JsonValue::Int(as_int)
-        } else if let Ok(as_float) = lexeme.parse::<f32>() {
-            JsonValue::Float(as_float)
-        } else {
-            JsonValue::String(lexeme.to_string())
-        }
     }
 
     fn update_nested_level(buf: &mut usize, current_token: &Token) {
@@ -87,7 +89,7 @@ impl Json {
                 if value_token.token_type() == TokenType::OpeningBrace {
                     Err(JsonError::InvalidPath)
                 } else {
-                    Ok(Self::lexeme_to_val(value_token.lexeme().as_ref().unwrap()))
+                    Ok(value_token.lexeme().as_ref().unwrap().into())
                 }
             })
     }
