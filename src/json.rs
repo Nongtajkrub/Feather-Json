@@ -1,4 +1,4 @@
-use crate::{lexer::{lex, lex_from_file}, token::{Token, TokenType}};
+use crate::{error::{JsonError, JsonResult}, lexer::{lex, lex_from_file}, token::{Token, TokenType}};
 use std::{fs, io};
 
 #[derive(Debug, Clone, PartialEq)]
@@ -48,8 +48,11 @@ impl Json {
             *buf -= 1;
         }
     }
+   
+    /// Find a specific key token index by using keys path.
+    fn find_key_token_index<'a>(&self, keys: &[&'a str]) -> JsonResult<usize> {
+        if keys.is_empty() { return Err(JsonError::NoPathProvided); }
 
-    pub fn get<'a>(&self, keys: &[&'a str]) -> JsonValue {
         let mut key_found = 0;
         let mut nested_level = 0;
 
@@ -67,14 +70,26 @@ impl Json {
                     key_found += 1;
 
                     if key_found == keys.len() {
-                        return Self::lexeme_to_val(
-                            self.tokens[i + 2].lexeme().as_ref().unwrap())
+                        return Ok(i);
                     }
                 }
             } 
         }
 
-        JsonValue::Unknown
+        Err(JsonError::InvalidPath)
+    }
+
+    pub fn get<'a>(&self, keys: &[&'a str]) -> JsonResult<JsonValue> {
+        self.tokens
+            .get(self.find_key_token_index(keys)? + 2)
+            .ok_or(JsonError::InvalidJson)
+            .and_then(|value_token| {
+                if value_token.token_type() == TokenType::OpeningBrace {
+                    Err(JsonError::InvalidPath)
+                } else {
+                    Ok(Self::lexeme_to_val(value_token.lexeme().as_ref().unwrap()))
+                }
+            })
     }
 
     fn estimate_json_size(&self) -> usize {
