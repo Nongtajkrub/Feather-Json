@@ -92,6 +92,48 @@ impl Json {
             })
     }
 
+    #[inline]
+    fn is_key_value_an_object(&self, key_index: usize) -> JsonResult<bool> {
+        self.tokens.get(key_index + 2)
+            .ok_or(JsonError::InvalidJson)
+            .and_then(|token| {
+                Ok(token.token_type() == TokenType::OpeningBrace)
+            })
+    }
+
+    fn insert_object_into_index(&mut self, i: usize, key: &str) -> JsonResult<()> {
+        self.tokens.splice(i..i, vec![
+            Token::new(&format!("\"{}\"", key), TokenType::Key),
+            Token::no_lexeme(TokenType::Assigner),
+            Token::no_lexeme(TokenType::OpeningBrace),
+            Token::no_lexeme(TokenType::ClosingBrace),
+        ]);
+
+        // Add a separator if needed.
+        match self.tokens.get(i + 4) {
+            Some(token) if token.token_type() == TokenType::ClosingBrace => (),
+            Some(_) => self.tokens.insert(i + 4, Token::no_lexeme(TokenType::Separator)),
+            None => return Err(JsonError::InvalidJson),
+        } 
+
+        Ok(())
+    }
+
+    pub fn insert_object(&mut self, keys: &[&str], key: &str) -> JsonResult<()> {
+        match self.find_key_token_index(keys) {
+            Ok(i) => {
+                if !self.is_key_value_an_object(i)? {
+                    Err(JsonError::InsertCantInsertIntoValue)
+                } else {
+                    self.insert_object_into_index(i + 3, key)
+                }
+            },
+            Err(ref e) if *e == JsonError::NoPathProvided =>
+                self.insert_object_into_index(1, key),
+            Err(e) => Err(e),
+        }
+    }
+
     fn estimate_json_size(&self) -> usize {
         let size = self.tokens.iter().map(|token| {
             match token.token_type() {
