@@ -26,6 +26,7 @@ impl PartialEq for JsonError {
             (NoPathProvided, NoPathProvided) => true,
             (InvalidPath, InvalidPath) => true,
             (InvalidJson, InvalidJson) => true,
+            (InsertCantInsertIntoValue, InsertCantInsertIntoValue) => true,
             (StdInputOutputError(_), StdInputOutputError(_)) => true,
 
             _ => false,
