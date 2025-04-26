@@ -37,7 +37,7 @@ impl Into<String> for JsonValue {
             JsonValue::Array(_) => todo!(),
         }
     }
-} 
+}
 
 pub struct Json {
     tokens: Vec<Token>,
@@ -55,11 +55,19 @@ impl Json {
     }
 
     fn update_nested_level(buf: &mut usize, current_token: &Token) {
-        if current_token.token_type() == TokenType::OpeningBrace {
-            *buf += 1;
-        } else if current_token.token_type() == TokenType::ClosingBrace {
-            *buf -= 1;
-        }
+        match current_token.token_type() {
+            TokenType::OpeningBrace => *buf += 1,
+            TokenType::ClosingBrace => *buf -= 1,
+            _ => (),
+        };
+    }
+
+    fn update_nested_level_include_brackets(buf: &mut usize, current_token: &Token) {
+        match current_token.token_type() {
+            TokenType::OpeningBrace | TokenType::LeftBracket => *buf += 1,
+            TokenType::ClosingBrace | TokenType::RightBracket => *buf -= 1,
+            _ => (),
+        };
     }
    
     /// Find a specific key token index by using keys path.
@@ -170,7 +178,9 @@ impl Json {
         let size = self.tokens.iter().map(|token| {
             match token.token_type() {
                 TokenType::OpeningBrace
-                | TokenType::ClosingBrace 
+                | TokenType::ClosingBrace
+                | TokenType::LeftBracket
+                | TokenType::RightBracket
                 | TokenType::Assigner 
                 | TokenType::Separator => 1,
 
@@ -189,6 +199,8 @@ impl Json {
             match token.token_type() {
                 TokenType::OpeningBrace => buffer.push('{'),
                 TokenType::ClosingBrace => buffer.push('}'),
+                TokenType::LeftBracket => buffer.push('['),
+                TokenType::RightBracket => buffer.push(']'),
                 TokenType::Key => buffer.push_str(token.lexeme().as_ref().unwrap()),
                 TokenType::Value => buffer.push_str(token.lexeme().as_ref().unwrap()),
                 TokenType::Assigner => buffer.push(':'),
@@ -199,9 +211,36 @@ impl Json {
         buffer
     }
 
-    fn format_handle_closing_brace(buf: &mut String, nested_level: usize) {
+    fn format_handle_closing_brace(
+        &self, buf: &mut String, i: usize, nested_level: usize
+    ) -> JsonResult<()> {
         buf.extend(std::iter::repeat_n('\t', nested_level));
-        buf.push_str("}\n");
+
+        // Figure out whether a new line is needed base on the next token.
+        match self.tokens.get(i + 1) {
+            Some(token) if token.token_type() == TokenType::Separator => buf.push('}'),
+            Some(_) => buf.push_str("}\n"),
+            None if nested_level == 0 => buf.push_str("}\n"),
+            None if nested_level != 0 => return Err(JsonError::InvalidJson),
+            None => return Ok(()),
+        }
+
+        Ok(())
+    }
+
+    fn format_handle_left_bracket(
+        &self, buf: &mut String, i: usize, nested_level: usize
+    ) {
+        if self.tokens[i - 1].token_type() != TokenType::Assigner {
+            buf.extend(std::iter::repeat_n('\t', nested_level - 1));
+        }
+
+        buf.push_str("[\n");
+    }
+
+    fn format_handle_right_bracket(buf: &mut String, nested_level: usize) {
+        buf.extend(std::iter::repeat_n('\t', nested_level));
+        buf.push_str("]\n");
     }
 
     fn format_handle_key(&self, buf: &mut String, i: usize, nested_level: usize) {
@@ -209,7 +248,12 @@ impl Json {
         buf.push_str(self.tokens[i].lexeme().as_ref().unwrap());
     }
 
-    fn format_handle_value(&self, buf: &mut String, i: usize) {
+    fn format_handle_value(&self, buf: &mut String, i: usize, nested_level: usize) {
+        // Have to do this for values in an array.
+        if !buf.is_empty() && buf.chars().last().unwrap() == '\n' {
+            buf.extend(std::iter::repeat_n('\t', nested_level));
+        }
+
         buf.push_str(self.tokens[i].lexeme().as_ref().unwrap());
 
         if self.tokens[i + 1].token_type() != TokenType::Separator {
@@ -217,22 +261,26 @@ impl Json {
         }
     }
 
-    pub fn to_string_format(&self) -> String {
+    pub fn to_string_format(&self) -> JsonResult<String> {
         let mut buffer = String::with_capacity(self.estimate_json_size());
         let mut nested_level = 0;
 
         for (i, token) in self.tokens.iter().enumerate() {
-            Self::update_nested_level(&mut nested_level, token);
+            Self::update_nested_level_include_brackets(&mut nested_level, token);
 
             match token.token_type() {
                 TokenType::OpeningBrace => 
                     buffer.push_str("{\n"),
                 TokenType::ClosingBrace =>
-                    Self::format_handle_closing_brace(&mut buffer, nested_level),
+                    self.format_handle_closing_brace(&mut buffer, i, nested_level)?,
+                TokenType::LeftBracket =>
+                    self.format_handle_left_bracket(&mut buffer, i, nested_level),
+                TokenType::RightBracket =>
+                    Self::format_handle_right_bracket(&mut buffer, nested_level),
                 TokenType::Key => 
                     self.format_handle_key(&mut buffer, i, nested_level),
                 TokenType::Value => 
-                    self.format_handle_value(&mut buffer, i),
+                    self.format_handle_value(&mut buffer, i, nested_level),
                 TokenType::Assigner => 
                     buffer.push_str(": "),
                 TokenType::Separator =>
@@ -240,7 +288,7 @@ impl Json {
             }
         }
 
-        buffer
+        Ok(buffer)
     }
 
     pub fn write(&self, path: &str) -> io::Result<()> {
@@ -248,8 +296,8 @@ impl Json {
         Ok(())
     }
 
-    pub fn write_format(&self, path: &str) -> io::Result<()> {
-        fs::write(path, self.to_string_format())?;
+    pub fn write_format(&self, path: &str) -> JsonResult<()> {
+        fs::write(path, self.to_string_format()?)?;
         Ok(())
     }
 }

@@ -5,6 +5,10 @@ pub enum TokenType {
     OpeningBrace,
     /// `}`
     ClosingBrace,
+    /// `[`
+    LeftBracket,
+    /// `]`
+    RightBracket,
     /// `key`: value
     Key,
     /// key`:` value

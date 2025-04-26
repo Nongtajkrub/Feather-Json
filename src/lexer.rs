@@ -2,10 +2,19 @@ use crate::token::{Token, TokenType};
 use std::{fs, io};
 
 fn handle_closing_brace(buf: &mut Vec<Token>, lexeme: &mut String) {
-    if lexeme.len() > 0 {
+    if !lexeme.is_empty() {
         buf.push(Token::new(lexeme, TokenType::Value));
     }
     buf.push(Token::no_lexeme(TokenType::ClosingBrace));
+
+    lexeme.clear();
+}
+
+fn handle_right_bracket(buf: &mut Vec<Token>, lexeme: &mut String) {
+    if !lexeme.is_empty() {
+        buf.push(Token::new(lexeme, TokenType::Value));
+    }
+    buf.push(Token::no_lexeme(TokenType::RightBracket));
 
     lexeme.clear();
 }
@@ -18,7 +27,9 @@ fn handle_assigner(buf: &mut Vec<Token>, lexeme: &mut String) {
 }
 
 fn handle_separator(buf: &mut Vec<Token>, lexeme: &mut String) {
-    buf.push(Token::new(lexeme, TokenType::Value));
+    if lexeme.len() > 0 {
+        buf.push(Token::new(lexeme, TokenType::Value));
+    }
     buf.push(Token::no_lexeme(TokenType::Separator));
 
     lexeme.clear();
@@ -38,6 +49,8 @@ pub fn lex(data: &str) -> Vec<Token> {
         match ch {
             '{' => result.push(Token::no_lexeme(TokenType::OpeningBrace)),
             '}' => handle_closing_brace(&mut result, &mut lexeme),
+            '[' => result.push(Token::no_lexeme(TokenType::LeftBracket)),
+            ']' => handle_right_bracket(&mut result, &mut lexeme), 
             ':' => handle_assigner(&mut result, &mut lexeme),
             ',' => handle_separator(&mut result, &mut lexeme),
             ' ' => handle_space(&mut lexeme), 
