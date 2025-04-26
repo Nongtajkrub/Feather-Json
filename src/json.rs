@@ -211,18 +211,34 @@ impl Json {
         buffer
     }
 
-    fn format_handle_closing_brace(
-        &self, buf: &mut String, i: usize, nested_level: usize
+    /// Handles formatting for closing brackets: `}` and `]`.
+    ///
+    /// # Notes
+    /// - The `bracket` param must be either `}` or `]` or else will panic.
+    fn format_handle_close_bracket(
+        &self, buf: &mut String, i: usize, nested_level: usize, bracket: char,
     ) -> JsonResult<()> {
+        assert!(bracket == '}' || bracket == ']', "Bracket param must be '}}' or ']]'.");
+
         buf.extend(std::iter::repeat_n('\t', nested_level));
 
         // Figure out whether a new line is needed base on the next token.
         match self.tokens.get(i + 1) {
-            Some(token) if token.token_type() == TokenType::Separator => buf.push('}'),
-            Some(_) => buf.push_str("}\n"),
-            None if nested_level == 0 => buf.push_str("}\n"),
-            None if nested_level != 0 => return Err(JsonError::InvalidJson),
-            None => return Ok(()),
+            Some(token) if token.token_type() == TokenType::Separator => {
+                buf.push(bracket);
+            }
+            Some(_) => {
+                buf.push(bracket);
+                buf.push('\n');
+            }
+            None => {
+                if nested_level == 0 {
+                    buf.push(bracket);
+                    buf.push('\n');
+                } else {
+                    return Err(JsonError::InvalidJson);
+                }
+            }
         }
 
         Ok(())
@@ -236,11 +252,6 @@ impl Json {
         }
 
         buf.push_str("[\n");
-    }
-
-    fn format_handle_right_bracket(buf: &mut String, nested_level: usize) {
-        buf.extend(std::iter::repeat_n('\t', nested_level));
-        buf.push_str("]\n");
     }
 
     fn format_handle_key(&self, buf: &mut String, i: usize, nested_level: usize) {
@@ -272,11 +283,11 @@ impl Json {
                 TokenType::OpeningBrace => 
                     buffer.push_str("{\n"),
                 TokenType::ClosingBrace =>
-                    self.format_handle_closing_brace(&mut buffer, i, nested_level)?,
+                    self.format_handle_close_bracket(&mut buffer, i, nested_level, '}')?,
                 TokenType::LeftBracket =>
                     self.format_handle_left_bracket(&mut buffer, i, nested_level),
                 TokenType::RightBracket =>
-                    Self::format_handle_right_bracket(&mut buffer, nested_level),
+                    self.format_handle_close_bracket(&mut buffer, i, nested_level, ']')?,
                 TokenType::Key => 
                     self.format_handle_key(&mut buffer, i, nested_level),
                 TokenType::Value => 
