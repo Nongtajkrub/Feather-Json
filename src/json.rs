@@ -220,7 +220,7 @@ impl Json {
     ) -> JsonResult<()> {
         assert!(bracket == '}' || bracket == ']', "Bracket param must be '}}' or ']]'.");
 
-        buf.extend(std::iter::repeat_n('\t', nested_level));
+        buf.extend(std::iter::repeat('\t').take(nested_level));
 
         // Figure out whether a new line is needed base on the next token.
         match self.tokens.get(i + 1) {
@@ -248,21 +248,21 @@ impl Json {
         &self, buf: &mut String, i: usize, nested_level: usize
     ) {
         if self.tokens[i - 1].token_type() != TokenType::Assigner {
-            buf.extend(std::iter::repeat_n('\t', nested_level - 1));
+            buf.extend(std::iter::repeat('\t').take(nested_level - 1));
         }
 
         buf.push_str("[\n");
     }
 
     fn format_handle_key(&self, buf: &mut String, i: usize, nested_level: usize) {
-        buf.extend(std::iter::repeat_n('\t', nested_level));
+        buf.extend(std::iter::repeat('\t').take(nested_level));
         buf.push_str(self.tokens[i].lexeme().as_ref().unwrap());
     }
 
     fn format_handle_value(&self, buf: &mut String, i: usize, nested_level: usize) {
         // Have to do this for values in an array.
         if !buf.is_empty() && buf.chars().last().unwrap() == '\n' {
-            buf.extend(std::iter::repeat_n('\t', nested_level));
+            buf.extend(std::iter::repeat('\t').take(nested_level));
         }
 
         buf.push_str(self.tokens[i].lexeme().as_ref().unwrap());
