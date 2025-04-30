@@ -16,6 +16,18 @@ pub enum JsonError {
 
     #[error("Std Input Output Error: {0}")]
     StdInputOutputError(#[from] std::io::Error),
+
+    #[error("Json value is not an integer.")]
+    JsonValueIsNotInteger,
+
+    #[error("Json value is not a float.")]
+    JsonValueIsNotFloat,
+
+    #[error("Json value is not a boolean.")]
+    JsonValueIsNotBool,
+
+    #[error("Json value is not a String.")]
+    JsonValueIsNotString,
 }
 
 impl PartialEq for JsonError {

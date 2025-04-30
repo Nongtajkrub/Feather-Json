@@ -11,6 +11,21 @@ pub enum JsonValue {
     Array(Vec<JsonValue>),
 }
 
+impl JsonValue {
+    /// Consume self and convert JsonValue into `String` no matter the type. Have
+    /// to be implemented like this instead of using `Into<String>` to prevent
+    /// conflict with `TryInto<String>`.
+    pub(crate) fn to_string_force(self) -> String {
+        match self {
+            JsonValue::String(value) => value,
+            JsonValue::Array(_) => todo!(),
+            JsonValue::Int(value) => value.to_string(),
+            JsonValue::Float(value) => value.to_string(),
+            JsonValue::Bool(value) => value.to_string(),
+        }
+    }
+}
+
 impl From<&String> for JsonValue {
     fn from(value: &String) -> Self {
         if value == "true" {
@@ -27,14 +42,46 @@ impl From<&String> for JsonValue {
     }
 }
 
-impl Into<String> for JsonValue {
-    fn into(self) -> String {
+impl TryInto<String> for JsonValue {
+    type Error = JsonError;
+
+    fn try_into(self) -> Result<String, Self::Error> {
         match self {
-            JsonValue::Int(value) => value.to_string(),
-            JsonValue::Float(value) => value.to_string(),
-            JsonValue::Bool(value) => value.to_string(),
-            JsonValue::String(value) => value,
-            JsonValue::Array(_) => todo!(),
+            JsonValue::String(value) => Ok(value),
+            _ => Err(JsonError::JsonValueIsNotString),
+        }
+    }
+}
+
+impl TryInto<i32> for JsonValue {
+    type Error = JsonError;
+    
+    fn try_into(self) -> Result<i32, Self::Error> {
+        match self {
+            JsonValue::Int(value) => Ok(value),
+            _ => Err(JsonError::JsonValueIsNotInteger),
+        }
+    }
+}
+
+impl TryInto<f32> for JsonValue {
+    type Error = JsonError;
+    
+    fn try_into(self) -> Result<f32, Self::Error> {
+        match self {
+            JsonValue::Float(value) => Ok(value),
+            _ => Err(JsonError::JsonValueIsNotFloat),
+        }
+    }
+}
+
+impl TryInto<bool> for JsonValue {
+    type Error = JsonError;
+    
+    fn try_into(self) -> Result<bool, Self::Error> {
+        match self {
+            JsonValue::Bool(value) => Ok(value),
+            _ => Err(JsonError::JsonValueIsNotBool),
         }
     }
 }
@@ -155,7 +202,7 @@ impl Json {
     pub fn insert_value(
         &mut self, keys: &[&str], key: &str, value: JsonValue
     ) -> JsonResult<()> {
-        let value_as_string: String = value.into();
+        let value_as_string: String = value.to_string_force();
 
         self.insert_tokens(keys, vec![
             Token::new(&format!("\"{}\"", key), TokenType::Key),
