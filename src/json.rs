@@ -101,6 +101,11 @@ impl Json {
         Json { tokens: lex(data), }
     }
 
+    #[inline]
+    pub fn from_tokens(tokens: Vec<Token>) -> Json {
+        Json { tokens }
+    }
+
     fn update_nested_level(buf: &mut usize, current_token: &Token) {
         match current_token.token_type() {
             TokenType::OpeningBrace => *buf += 1,
@@ -357,5 +362,63 @@ impl Json {
     pub fn write_format(&self, path: &str) -> JsonResult<()> {
         fs::write(path, self.to_string_format()?)?;
         Ok(())
+    }
+}
+
+pub struct JsonBuilder {
+    tokens: Vec<Token>,
+}
+
+impl JsonBuilder {
+    #[inline]
+    pub fn new() -> Self {
+        JsonBuilder { tokens: vec![Token::no_lexeme(TokenType::OpeningBrace)] }
+    }
+
+    #[inline]
+    fn add_separator_if_needed(&mut self) {
+        if matches!(
+            self.tokens.last().map(|token| token.token_type()),
+            Some(TokenType::Value | TokenType::ClosingBrace)) 
+        {
+            self.tokens.push(Token::no_lexeme(TokenType::Separator));
+        } 
+    }
+
+    pub fn object(mut self, name: &str) -> Self {
+        self.add_separator_if_needed();
+
+        self.tokens.extend([
+            Token::new(&format!("\"{}\"", name), TokenType::Key),
+            Token::no_lexeme(TokenType::Assigner),
+            Token::no_lexeme(TokenType::OpeningBrace)
+        ]);
+        self
+    }
+
+    pub fn value(mut self, key: &str, value: JsonValue) -> Self {
+        self.add_separator_if_needed();
+
+        self.tokens.extend([
+            Token::new(&format!("\"{}\"", key), TokenType::Key),
+            Token::no_lexeme(TokenType::Assigner),
+            Token::new(&value.to_string_force(), TokenType::Value)
+        ]);
+        self
+    }
+
+    #[inline]
+    pub fn object_end(mut self) -> Self {
+        self.tokens.push(Token::no_lexeme(TokenType::ClosingBrace));
+        self
+    }
+
+    #[inline]
+    pub fn build(mut self) -> Json {
+        self.tokens.push(Token::no_lexeme(TokenType::ClosingBrace));
+
+        println!("{:#?}", self.tokens);
+
+        Json::from_tokens(self.tokens)
     }
 }
