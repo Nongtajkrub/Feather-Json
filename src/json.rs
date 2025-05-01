@@ -12,22 +12,23 @@ pub enum JsonValue {
 }
 
 impl JsonValue {
-    /// Consume self and convert JsonValue into `String` no matter the type. Have
-    /// to be implemented like this instead of using `Into<String>` to prevent
-    /// conflict with `TryInto<String>`.
-    pub(crate) fn to_string_force(self) -> String {
-        match self {
-            JsonValue::String(value) => value,
-            JsonValue::Array(_) => todo!(),
-            JsonValue::Int(value) => value.to_string(),
-            JsonValue::Float(value) => value.to_string(),
-            JsonValue::Bool(value) => value.to_string(),
-        }
-    }
-}
-
-impl From<&String> for JsonValue {
-    fn from(value: &String) -> Self {
+    /// Creates a `JsonValue` from a string slice by inferring the most appropriate 
+    /// type. Unlike `From<&str>` or `From<String>`, this method attempts to convert
+    /// the input into a more specific JSON type.
+    /// 
+    /// # Notes
+    /// - `"true"` and `"false"` are parsed as `JsonValue::Bool`
+    /// - Numeric strings are parsed as `JsonValue::Int` or `JsonValue::Float`
+    /// - All other input is returned as `JsonValue::String`
+    ///
+    /// # Examples
+    /// ```
+    /// assert_eq!(JsonValue::from_string("true"), JsonValue::Bool(true));
+    /// assert_eq!(JsonValue::from_string("42"), JsonValue::Int(42));
+    /// assert_eq!(JsonValue::from_string("3.14"), JsonValue::Float(3.14));
+    /// assert_eq!(JsonValue::from_string("hello"), JsonValue::String("hello".to_string()));
+    /// ```
+    pub(crate) fn parse(value: &str) -> JsonValue {
         if value == "true" {
             JsonValue::Bool(true)
         } else if value == "false" {
@@ -40,7 +41,65 @@ impl From<&String> for JsonValue {
             JsonValue::String(value.to_string())
         }
     }
+
+    /// Consumes the `JsonValue` and converts it into a `String`, regardless of
+    /// its original type. This method guarantees a string output for any `JsonValue`.
+    /// It is implemented separately instead of using `Into<String>` to avoid 
+    /// conflict with `TryInto<String>`.
+    ///
+    /// # Notes
+    /// - `JsonValue::String` returns the inner string directly.
+    /// - Other types are converted using their `to_string()` implementation.
+    /// - `JsonValue::Array` is currently unimplemented.
+    ///
+    /// # Examples
+    /// ```
+    /// assert_eq!(JsonValue::Int(42).to_string_force(), "42");
+    /// assert_eq!(JsonValue::Bool(true).to_string_force(), "true");
+    /// assert_eq!(JsonValue::String("hello".into()).to_string_force(), "hello");
+    /// ```
+    pub(crate) fn to_string_force(self) -> String {
+        match self {
+            JsonValue::String(value) => value,
+            JsonValue::Array(_) => todo!(),
+            JsonValue::Int(value) => value.to_string(),
+            JsonValue::Float(value) => value.to_string(),
+            JsonValue::Bool(value) => value.to_string(),
+        }
+    }
 }
+
+impl From<&str> for JsonValue {
+    fn from(value: &str) -> Self {
+        JsonValue::String(format!("\"{}\"", value))
+    }
+}
+
+impl From<i32> for JsonValue {
+    fn from(value: i32) -> Self {
+        JsonValue::Int(value)
+    }
+}
+
+impl From<f32> for JsonValue {
+    fn from(value: f32) -> Self {
+        JsonValue::Float(value)
+    }
+}
+
+impl From<bool> for JsonValue {
+    fn from(value: bool) -> Self {
+        JsonValue::Bool(value)
+    }
+}
+
+/* todo
+impl From<Array> for JsonValue {
+    fn from(value: Array) -> Self {
+        todo!()
+    }
+}
+*/
 
 impl TryInto<String> for JsonValue {
     type Error = JsonError;
@@ -160,7 +219,7 @@ impl Json {
                 if value_token.token_type() == TokenType::OpeningBrace {
                     Err(JsonError::InvalidPath)
                 } else {
-                    Ok(JsonValue::from(value_token.lexeme().as_ref().unwrap()))
+                    Ok(JsonValue::parse(value_token.lexeme().as_ref().unwrap()))
                 }
             })
     }
@@ -396,13 +455,13 @@ impl JsonBuilder {
         self
     }
 
-    pub fn value(mut self, key: &str, value: JsonValue) -> Self {
+    pub fn value(mut self, key: &str, value: impl Into<JsonValue>) -> Self {
         self.add_separator_if_needed();
 
         self.tokens.extend([
             Token::new(&format!("\"{}\"", key), TokenType::Key),
             Token::no_lexeme(TokenType::Assigner),
-            Token::new(&value.to_string_force(), TokenType::Value)
+            Token::new(&value.into().to_string_force(), TokenType::Value)
         ]);
         self
     }
@@ -416,9 +475,6 @@ impl JsonBuilder {
     #[inline]
     pub fn build(mut self) -> Json {
         self.tokens.push(Token::no_lexeme(TokenType::ClosingBrace));
-
-        println!("{:#?}", self.tokens);
-
         Json::from_tokens(self.tokens)
     }
 }
